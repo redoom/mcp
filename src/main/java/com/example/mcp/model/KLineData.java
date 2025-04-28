@@ -1,22 +1,18 @@
 package com.example.mcp.model;
 
+import com.example.mcp.util.CsvMerger;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.databind.JsonNode;
 
 import java.io.IOException;
-import java.nio.file.Files;
-import java.nio.file.Paths;
+import java.nio.file.Path;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Arrays;
 import java.util.List;
-import java.util.Map;
-import java.util.concurrent.CompletableFuture;
-import java.util.concurrent.CompletionException;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
+
 
 @JsonIgnoreProperties(ignoreUnknown = true)
 public record KLineData(
@@ -36,7 +32,7 @@ public record KLineData(
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
     };
 
-    private static LocalDateTime parseDate(String text) {
+    public static LocalDateTime parseDate(String text) {
         for (DateTimeFormatter fmt : CSV_FORMATTERS) {
             try {
                 return LocalDateTime.parse(text, fmt);
@@ -96,30 +92,10 @@ public record KLineData(
                 .map(KLineData::fromCsv)
                 .toArray(KLineData[]::new);
     }
-
-    public KLineData[] parseKLineDataParallel(String rootDir) throws IOException {
-        List<String> allLines = Files.readAllLines(Paths.get(rootDir));
-        List<List<String>> segments = Lists.partition(allLines, 1000);                    // :contentReference[oaicite:11]{index=11}
-
-        ExecutorService exec = Executors.newFixedThreadPool(4);                           // 可根据机器调优
-        List<CompletableFuture<List<KLineData>>> futures = segments.stream()
-                .map(segment -> CompletableFuture.supplyAsync(() -> {
-                    try {
-                        String argsJson = objectMapper.writeValueAsString(Map.of("lines", segment));
-                        String resp = parseSegmentCallback.call(argsJson);
-                        return Arrays.asList(objectMapper.readValue(resp, KLineData[].class));
-                    } catch (Exception e) {
-                        throw new CompletionException(e);
-                    }
-                }, exec))
-                .collect(Collectors.toList());
-
-        CompletableFuture.allOf(futures.toArray(new CompletableFuture[0])).join();        // 等待所有完成
-        List<KLineData> all = futures.stream()
-                .flatMap(f -> f.join().stream())
-                .collect(Collectors.toList());
-        exec.shutdown();
-        return all.toArray(new KLineData[0]);
+    public static void main(String[] args) throws IOException {
+        String csvFiles = CsvMerger.mergeCsvFiles(Path.of(CsvMerger.ROOT));
+        List<KLineData> allData = List.of(KLineData.parseCsvLines(csvFiles));
+        System.out.println(allData);
     }
 
 }
