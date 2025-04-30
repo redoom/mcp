@@ -8,6 +8,8 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.time.LocalDate;
+import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -15,7 +17,7 @@ import java.util.stream.Stream;
 public class CsvMerger {
 
     // 指定要扫描的目录
-    public static final String ROOT = "D:\\data\\crypto";
+    public static final String ROOT = "D:\\data\\";
 
     /**
      * 程序入口：遍历 ROOT 下所有 .csv 文件，
@@ -24,13 +26,8 @@ public class CsvMerger {
      */
     public static void main(String[] args) {
         try {
-            List<Path> megaString = findAllCsvFiles(Path.of(ROOT));
-            String csvFiles = mergeCsvFiles(Path.of(ROOT));
-            // 获取桌面路径
-            String desktopPath = System.getProperty("user.home") + "/Desktop";
-            File outputFile = new File(desktopPath, "csv_files.txt");
-
-
+            Path rootDir = Path.of(ROOT);
+            List<Path> megaString = findAllCsvFiles(rootDir);
             // 直接把所有数据一次性打印出来
             System.out.println(megaString);
         } catch (IOException e) {
@@ -100,10 +97,6 @@ public class CsvMerger {
                     .filter(path -> path.toString().toLowerCase().endsWith(".csv"))
                     .filter(path -> {
                         try {
-                            // 获取文件名（不含扩展名）
-                            String fileName = path.getFileName().toString();
-                            String file = fileName.substring(0, fileName.lastIndexOf('.'));
-
                             // 获取文件所在的目录
                             Path parent = path.getParent();
 
@@ -146,6 +139,8 @@ public class CsvMerger {
                             // 获取文件名（不含扩展名）
                             String fileName = path.getFileName().toString();
                             String file = fileName.substring(0, fileName.lastIndexOf('.'));
+
+                            if (symbol.isEmpty()) return true;
 
                             if (!file.equals(symbol)) return false;
 
@@ -200,6 +195,11 @@ public class CsvMerger {
                     result.append("\n").append(line);
                 }
             }
+
+            // 在循环结束后添加
+            if (!firstDataLine) {
+                result.append("\n");
+            }
         } catch (IOException e) {
             System.err.println("读取CSV文件时出错: " + e.getMessage());
         }
@@ -242,7 +242,129 @@ public class CsvMerger {
         if (text == null || text.isEmpty()) {
             return 0;
         }
-        // 按换行符分割并计算结果数组长度
-        return text.split("\n", -1).length;
+
+        // 检查文本是否以换行符结尾
+        if (text.endsWith("\n")) {
+            // 如果以换行符结尾，减去多余的一行
+            return text.split("\n", -1).length - 1;
+        } else {
+            // 如果不以换行符结尾，直接返回分割结果
+            return text.split("\n", -1).length;
+        }
+    }
+
+    /**
+     * 1d使用，读取到所有的数据获取指定
+     * @param data 数据
+     * @param symbol 种类代码用于过滤
+     * @return 过滤后的数据
+     */
+/*
+    public static String filterData(String data, String symbol) {
+        if (data == null || data.isEmpty() || symbol == null || symbol.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder result = new StringBuilder();
+        String[] lines = data.split("\n");
+
+        for (String line : lines) {
+            String[] fields = line.split(",");
+
+            // 确保行有足够的字段
+            if (fields.length >= 2) {
+                // 检查第二个字段(索引1)是否与symbol匹配
+                if (fields[1].equals(symbol)) {
+                    // 将匹配的行添加到结果中，并添加换行符
+                    result.append(line).append("\n");
+                }
+            }
+        }
+
+        // 如果有匹配行，移除最后一个换行符
+        if (result.length() > 0) {
+            result.setLength(result.length() - 1);
+        }
+        return result.toString();
+    }
+*/
+
+    /**
+     * 1d使用，读取到所有的数据获取指定
+     * @param data 数据
+     * @param symbol 种类代码用于过滤
+     * @return 过滤后的数据
+     */
+    public static String filterData(String data, String symbol) {
+        if (data == null || data.isEmpty() || symbol == null || symbol.isEmpty()) {
+            return "";
+        }
+
+        StringBuilder result = new StringBuilder();
+        String[] lines = data.split("\n");
+
+        // 确保至少有一行（表头）
+        if (lines.length == 0) {
+            return "";
+        }
+
+        // 添加表头到结果
+        String header = lines[0];
+        result.append(header).append("\n");
+
+        // 解析表头，找到symbol所在的列索引
+        String[] headerFields = header.split(",");
+        int symbolIndex = -1;
+
+        for (int i = 0; i < headerFields.length; i++) {
+            if (headerFields[i].trim().equalsIgnoreCase("symbol")) {
+                symbolIndex = i;
+                break;
+            }
+        }
+
+        // 如果没有找到symbol列，返回只有表头的结果
+        if (symbolIndex == -1) {
+            return result.toString();
+        }
+
+        // 遍历数据行（跳过表头）
+        for (int i = 1; i < lines.length; i++) {
+            String line = lines[i];
+            String[] fields = line.split(",");
+
+            // 确保行有足够的字段
+            if (fields.length > symbolIndex) {
+                // 检查symbol列是否与给定的symbol匹配
+                if (fields[symbolIndex].equals(symbol)) {
+                    // 将匹配的行添加到结果中，并添加换行符
+                    result.append(line).append("\n");
+                }
+            }
+        }
+
+        // 如果只有表头，移除最后一个换行符
+        if (result.length() > 0) {
+            result.setLength(result.length() - 1);
+        }
+        return result.toString();
+    }
+
+    public static int getBobIndex(Path path) {
+        String line;
+        try (BufferedReader br = new BufferedReader(new FileReader(path.toFile()))) {
+            while ((line = br.readLine()) != null) {
+                String[] str = line.split(",");
+                for (int i = 0; i < str.length; i++) {
+                    if (str[i].trim().equalsIgnoreCase("bob")) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+        } catch (IOException e) {
+            System.err.println("读取CSV文件时出错: " + e.getMessage());
+        }
+        return -1;
     }
 }

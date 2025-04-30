@@ -86,7 +86,7 @@ public class FolderSize {
         return size / 120;
     }
 
-    public static long getFileSizes(List<Path> paths) {
+    public static Long getFileSize(List<Path> paths) {
         long sum = 0L;
 
         for (Path path : paths) {

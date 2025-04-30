@@ -1,62 +1,36 @@
-/*
-* Copyright 2024 - 2024 the original author or authors.
-*
-* Licensed under the Apache License, Version 2.0 (the "License");
-* you may not use this file except in compliance with the License.
-* You may obtain a copy of the License at
-*
-* https://www.apache.org/licenses/LICENSE-2.0
-*
-* Unless required by applicable law or agreed to in writing, software
-* distributed under the License is distributed on an "AS IS" BASIS,
-* WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-* See the License for the specific language governing permissions and
-* limitations under the License.
-*/
+import com.example.McpServerApplication;
+import com.example.mcp.model.DataLabel;
+import com.example.mcp.repository.VvtrData;
+import com.example.mcp.tool.Vvtr;
+import com.example.mcp.util.CsvMerger;
+import jakarta.annotation.Resource;
+import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.SpringBootTest;
 
-import java.util.Map;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.List;
+import java.util.stream.Collectors;
 
-import io.modelcontextprotocol.client.McpClient;
-import io.modelcontextprotocol.client.transport.ServerParameters;
-import io.modelcontextprotocol.client.transport.StdioClientTransport;
-import io.modelcontextprotocol.spec.McpSchema.CallToolRequest;
-import io.modelcontextprotocol.spec.McpSchema.CallToolResult;
-import io.modelcontextprotocol.spec.McpSchema.ListToolsResult;
+@SpringBootTest(classes = McpServerApplication.class)
+class ClientStdio {
 
-/**
- * With stdio transport, the MCP server is automatically started by the client. But you
- * have to build the server jar first:
- *
- * <pre>
- * ./mvnw clean install -DskipTests
- * </pre>
- */
-public class ClientStdio {
+    @Resource
+    private Vvtr vvtr;
+    @Resource
+    private VvtrData vvtrData;
 
-	public static void main(String[] args) {
+    @Test
+    public void testVvtr() throws Exception {
+        List<String> paths = vvtr.getFundData("fund", "1d", "501095", "", "");
+        System.out.println(paths);
+        System.out.printf(vvtr.getDayData(paths, "501095", 0, 1000));
+        System.out.println(vvtr.getDataCount(paths, "1d", "501095"));
+        List<Path> path = paths.stream()
+                .map(Paths::get)
+                .collect(Collectors.toList());
+        System.out.println(vvtrData.testData(path, 8));
 
-		var stdioParams = ServerParameters.builder("java")
-			.args("-jar",
-					"model-context-protocol/weather/starter-stdio-server/target/mcp-weather-stdio-server-0.0.1-SNAPSHOT.jar")
-			.build();
-
-		var transport = new StdioClientTransport(stdioParams);
-		var client = McpClient.sync(transport).build();
-
-		client.initialize();
-
-		// List and demonstrate tools
-		ListToolsResult toolsList = client.listTools();
-		System.out.println("Available Tools = " + toolsList);
-
-		CallToolResult weatherForcastResult = client.callTool(new CallToolRequest("getWeatherForecastByLocation",
-				Map.of("latitude", "47.6062", "longitude", "-122.3321")));
-		System.out.println("Weather Forcast: " + weatherForcastResult);
-
-		CallToolResult alertResult = client.callTool(new CallToolRequest("getAlerts", Map.of("state", "NY")));
-		System.out.println("Alert Response = " + alertResult);
-
-		client.closeGracefully();
-	}
+    }
 
 }

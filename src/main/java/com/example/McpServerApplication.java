@@ -2,8 +2,7 @@ package com.example;
 
 // 导入Spring AI和Spring Boot所需的类
 import com.example.mcp.demo.WeatherService;
-import com.example.mcp.tool.VvtrDate;
-import com.example.mcp.util.CsvMerger;
+import com.example.mcp.tool.Vvtr;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import groovy.util.logging.Slf4j;
 import io.modelcontextprotocol.server.McpServerFeatures;
@@ -21,7 +20,6 @@ import org.springframework.context.annotation.Bean;
 import java.io.IOException;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -62,12 +60,12 @@ public class McpServerApplication {
 	}
 
 
-//	@Bean
-//	public ToolCallbackProvider vvtrTools(VvtrDate vvtrDate) {
-//		return MethodToolCallbackProvider.builder()
-//				.toolObjects(vvtrDate)
-//				.build();
-//	}
+	@Bean
+	public ToolCallbackProvider vvtrTools(Vvtr vvtrDate) {
+		return MethodToolCallbackProvider.builder()
+				.toolObjects(vvtrDate)
+				.build();
+	}
 
 //	@Bean
 //	public List<McpServerFeatures.SyncResourceSpecification> resources() throws IOException {
