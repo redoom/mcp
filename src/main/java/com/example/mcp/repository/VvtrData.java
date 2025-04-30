@@ -138,10 +138,12 @@ public class VvtrData {
                     continue;
                 }
                 // 时间校验
-                String time = single[bobIndex].split("\\+")[0];
-                LocalDateTime dateTime = LocalDateTime.parse(time, formatter);
+                String startDataTime = single[bobIndex].split("\\+")[0];
+                String endDataTime = single[bobIndex + 1].split("\\+")[0];
+                LocalDateTime startDateLocalTime = LocalDateTime.parse(startDataTime, formatter);
+                LocalDateTime endDateLocalTime = LocalDateTime.parse(endDataTime, formatter);
                 if (startDateTime != null && endDateTime != null) {
-                    if (dateTime.isAfter(startDateTime) && dateTime.isBefore(endDateTime)) {
+                    if (!startDateLocalTime.isAfter(endDateTime) && !endDateLocalTime.isBefore(startDateTime)) {
                         stringBuilder.append(line).append("\n");
                     }
                 } else {
