@@ -1,5 +1,6 @@
 package com.example.mcp.startup;
 
+import groovy.util.logging.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.ApplicationArguments;
 import org.springframework.boot.ApplicationRunner;
@@ -9,12 +10,14 @@ import java.io.File;
 import java.util.Arrays;
 import java.util.List;
 
+import static com.example.McpServerApplication.log;
+
 
 @Component
+@Slf4j
 public class FolderInitializer implements ApplicationRunner {
 
-    @Value("${file.base-path}")
-    private String basePath;
+    private final String basePath = System.getProperty("api.data.path");
 
     /**
      * 启动时创建所需文件夹
@@ -42,12 +45,12 @@ public class FolderInitializer implements ApplicationRunner {
                 if (!typeDir.exists()) {
                     boolean created = typeDir.mkdirs();
                     if (created) {
-                        System.out.println("Created folder: " + typeDir.getAbsolutePath());
+                        log.info("Created folder: {}", typeDir.getAbsolutePath());
                     } else {
-                        System.err.println("Failed to create folder: " + typeDir.getAbsolutePath());
+                        log.info("Failed to create folder: {}", typeDir.getAbsolutePath());
                     }
                 } else {
-                    System.out.println("Folder already exists: " + typeDir.getAbsolutePath());
+                    log.info("Folder already exists: {}", typeDir.getAbsolutePath());
                 }
             }
         }

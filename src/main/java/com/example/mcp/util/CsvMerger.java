@@ -7,9 +7,6 @@ import java.io.*;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
-import java.nio.file.Paths;
-import java.time.LocalDate;
-import java.time.format.DateTimeFormatter;
 import java.util.List;
 import java.util.stream.Collectors;
 import java.util.stream.Stream;
@@ -18,6 +15,7 @@ public class CsvMerger {
 
     // 指定要扫描的目录
     public static final String ROOT = "D:\\data\\";
+//    public static final String ROOT = System.getProperty("user.data.path");
 
     /**
      * 程序入口：遍历 ROOT 下所有 .csv 文件，
@@ -91,23 +89,28 @@ public class CsvMerger {
      * @throws IOException 如果发生I/O错误
      */
     public static List<Path> findAllCsvFiles(Path rootDir, String startDate, String endDate) throws IOException {
+        boolean returnAll = startDate.equals("00000000") && endDate.equals("99999999");
         try (Stream<Path> paths = Files.walk(rootDir)) {
             return paths
                     .filter(Files::isRegularFile)
                     .filter(path -> path.toString().toLowerCase().endsWith(".csv"))
                     .filter(path -> {
+
                         try {
                             // 获取文件所在的目录
                             Path parent = path.getParent();
-
                             // 如果父目录为空，无法过滤
                             if (parent == null) return false;
 
                             // 获取父目录的名称（这应该是日期格式，例如 20200101）
                             String dateStr = parent.getFileName().toString();
 
+                            if (rootDir.getFileName().toString().equals(dateStr)) return true;
+
                             // 确保日期格式正确
                             if (dateStr.length() != 8) return false;
+
+                            if (returnAll) return true;
 
                             // 使用字符串比较判断日期是否在范围内
                             return dateStr.compareTo(startDate) >= 0 &&
@@ -130,11 +133,15 @@ public class CsvMerger {
      * @throws IOException 如果发生I/O错误
      */
     public static List<Path> findAllCsvFiles(Path rootDir, String startDate, String endDate, String symbol) throws IOException {
+        boolean returnAll = startDate.equals("00000000") && endDate.equals("99999999");
         try (Stream<Path> paths = Files.walk(rootDir)) {
             return paths
                     .filter(Files::isRegularFile)
                     .filter(path -> path.toString().toLowerCase().endsWith(".csv"))
                     .filter(path -> {
+
+
+
                         try {
                             // 获取文件名（不含扩展名）
                             String fileName = path.getFileName().toString();
@@ -153,8 +160,12 @@ public class CsvMerger {
                             // 获取父目录的名称（这应该是日期格式，例如 20200101）
                             String dateStr = parent.getFileName().toString();
 
+                            if (rootDir.getFileName().toString().equals(dateStr)) return true;
+
                             // 确保日期格式正确
                             if (dateStr.length() != 8) return false;
+
+                            if (returnAll) return true;
 
                             // 使用字符串比较判断日期是否在范围内
                             return dateStr.compareTo(startDate) >= 0 &&
@@ -357,6 +368,42 @@ public class CsvMerger {
                 String[] str = line.split(",");
                 for (int i = 0; i < str.length; i++) {
                     if (str[i].trim().equalsIgnoreCase("bob")) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+        } catch (IOException e) {
+            System.err.println("读取CSV文件时出错: " + e.getMessage());
+        }
+        return -1;
+    }
+
+    public static int getSymbolIndex(Path path) {
+        String line;
+        try (BufferedReader br = new BufferedReader(new FileReader(path.toFile()))) {
+            while ((line = br.readLine()) != null) {
+                String[] str = line.split(",");
+                for (int i = 0; i < str.length; i++) {
+                    if (str[i].trim().equalsIgnoreCase("symbol")) {
+                        return i;
+                    }
+                }
+                return -1;
+            }
+        } catch (IOException e) {
+            System.err.println("读取CSV文件时出错: " + e.getMessage());
+        }
+        return -1;
+    }
+
+    public static int getCreateTimeIndex(Path path) {
+        String line;
+        try (BufferedReader br = new BufferedReader(new FileReader(path.toFile()))) {
+            while ((line = br.readLine()) != null) {
+                String[] str = line.split(",");
+                for (int i = 0; i < str.length; i++) {
+                    if (str[i].trim().equalsIgnoreCase("created_at")) {
                         return i;
                     }
                 }

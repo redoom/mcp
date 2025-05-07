@@ -1,5 +1,6 @@
 package com.example.mcp.tool;
 
+import com.example.mcp.model.DataBack;
 import com.example.mcp.model.DataLabel;
 import com.example.mcp.repository.VvtrData;
 import com.example.mcp.util.CsvMerger;
@@ -15,7 +16,7 @@ import java.util.stream.Collectors;
 
 @Service
 public class Vvtr {
-//    private static final String API_KEY = System.getProperty("api-key");
+    private static final String API_KEY = System.getProperty("api-key");
 
     private final VvtrData vvtrData;
 
@@ -28,7 +29,7 @@ public class Vvtr {
             description = "获取所需金融产品历史数据的资源路径")
     public List<String> getFundData(@ToolParam(required = true, description = "查询的金融产品种类,eg:fund") String type,
                                   @ToolParam(required = true, description = "查询的数据类型,eg:15m,1m,1d,tick") String name,
-                                  @ToolParam(required = true, description = "种类代码") String symbol,
+                                  @ToolParam(required = true, description = "种类代码,可以为空字符串") String symbol,
                                   @ToolParam(required = true, description = "查询的开始时间(yyyyMMdd),可为空字符串") String startTime,
                                   @ToolParam(required = true, description = "查询的结束时间(yyyyMMdd),可为空字符串") String endTime) throws Exception {
         // 获取到所有需要查找的文件
@@ -79,36 +80,54 @@ public class Vvtr {
         }
     }
 
-    @Tool(name = "get-financial-products-min-or-tick-data",
-            description = "根据获取的分钟(1m/15m/tick)类型金融产品资源路径查询数据,分片查询，一次性最多查询3000条,超过3000条分多次查询")
-    public DataLabel getMinuteData(@ToolParam(description = "要查询的资源路径,eg:[D:/data/fund/1m/202009/20200904/20200904.csv]") List<String> pathStrs,
-                                   @ToolParam(description = "上一次剩余数据,第一次则为0") int nextIndex,
-                                   @ToolParam(required = false, description = "要获取的条数") int count) throws Exception {
+    @Tool(name = "get-financial-products-min-data",
+            description = "根据获取的分钟(1m/15m)类型金融产品资源路径查询数据,分片查询,受到上下文限制,一般需要多次请求,一次性查询不超过3000条,超过3000条分多次查询,会返回剩下需要查询的文件,返回文件为空即查完")
+    public DataBack getMinuteData(@ToolParam(description = "要查询的资源路径,eg:[D:/data/fund/1m/202009/20200904/20200904.csv]") List<String> pathStrs,
+                                  @ToolParam(description = "查询的开始时间(yyyy-MM-dd HH:mm:ss),如果为空字符串则查询全部数据") String startTime,
+                                  @ToolParam(description = "查询的结束时间(yyyy-MM-dd HH:mm:ss),如果为空字符串则查询全部数据") String endTime) throws Exception {
         // 先把字符串列表转回 Path
         List<Path> paths = pathStrs.stream()
                 .map(Paths::get)
                 .collect(Collectors.toList());
-        if (count > 3000 || count < 0) {
-            count = 3000;
+        if (startTime == null || startTime.isEmpty()) {
+            startTime = null;
+        }
+        if (endTime == null || endTime.isEmpty()) {
+            endTime = null;
         }
         int bobIndex = CsvMerger.getBobIndex(paths.get(0));
-        return vvtrData.getMinuteData(paths, bobIndex, count);
+        return vvtrData.getMinData(paths, startTime, endTime, bobIndex);
     }
 
     @Tool(name = "get-financial-products-day-data",
-            description = "根据获取的分钟(1d)类型金融产品资源路径查询数据,分片查询，一次性最多查询3000条,超过3000条分多次查询")
-    public String getDayData(@ToolParam(description = "要查询的资源路径,eg:[D:/data/fund/1d/202009/20200904/20200904.csv]") List<String> pathStrs,
+            description = "根据获取的日线(1d)类型金融产品资源路径查询数据,分片查询，一次性查询不超过3000条,超过3000条分多次查询,会返回剩下需要查询的文件,返回文件为空即查完")
+    public DataBack getDayData(@ToolParam(description = "要查询的资源路径,eg:[D:/data/fund/1d/202009/20200904/20200904.csv]") List<String> pathStrs,
                              @ToolParam(description = "种类代码") String symbol,
-                             @ToolParam(required = false, description = "要查询的起始位置(第几条开始)") int offset,
-                             @ToolParam(required = false, description = "要查询的结束位置(第几条结束)") int limit) throws Exception {
+                             @ToolParam(required = false, description = "查询的开始时间(yyyy-MM-dd),如果为空字符串则查询全部数据") String startTime,
+                             @ToolParam(required = false, description = "查询的结束时间(yyyy-MM-dd),如果为空字符串则查询全部数据") String endTime) throws Exception {
         // 先把字符串列表转回 Path
         List<Path> paths = pathStrs.stream()
                 .map(Paths::get)
                 .collect(Collectors.toList());
         int bobIndex = CsvMerger.getBobIndex(paths.get(0));
-        String data = CsvMerger.parseMultipleCSVFilesWithoutHeader(paths);
-        String filterData = CsvMerger.filterData(data, symbol);
-        return vvtrData.getDayData(filterData, offset, limit);
+        int symbolIndex = CsvMerger.getSymbolIndex(paths.get(0));
+//        String data = CsvMerger.parseMultipleCSVFilesWithoutHeader(paths);
+//        String filterData = CsvMerger.filterData(data, symbol);
+        return vvtrData.getDayData(paths, symbol, symbolIndex, startTime, endTime, bobIndex);
+    }
+
+    @Tool(name = "get-financial-products-tick-data",
+    description = "根据获取的每一笔成交数据(tick)类型金融产品资源路径查询数据,分片查询，一次性查询不超过180条,超过180条分多次查询,会返回当前文件及剩下需要查询的文件,和当前文件的索引,返回文件为空即查完")
+    public DataLabel getTickData(@ToolParam(description = "要查询的资源路径,eg:[D:/data/fund/tick/202009/20200904/20200904.csv]") List<String> pathStrs,
+                                @ToolParam(description = "查询的开始时间(yyyy-MM-dd HH:mm:ss),如果为空字符串则查询全部数据") String startTime,
+                                @ToolParam(description = "查询的结束时间(yyyy-MM-dd HH:mm:ss),如果为空字符串则查询全部数据") String endTime,
+                                @ToolParam(description = "上一次剩余数据,第一次则为0") int nextIndex,
+                                @ToolParam(required = false, description = "要获取的条数") int count) throws Exception {
+        List<Path> paths = pathStrs.stream()
+                .map(Paths::get)
+                .collect(Collectors.toList());
+        int createTimeIndex = CsvMerger.getCreateTimeIndex(paths.get(0));
+        return vvtrData.getTickData(paths, startTime, endTime, createTimeIndex, nextIndex, count);
     }
 
     public static void main(String[] args) throws Exception {

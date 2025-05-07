@@ -28,7 +28,7 @@ import java.util.UUID;
 @SpringBootApplication
 public class McpServerApplication {
 
-	private static final Logger log = LoggerFactory.getLogger(McpServerApplication.class);
+	public static final Logger log = LoggerFactory.getLogger(McpServerApplication.class);
 
 	public static void main(String[] args) {
 		// 启动Spring Boot应用
@@ -36,7 +36,7 @@ public class McpServerApplication {
 	}
 
 	// 定义一个Bean，返回ToolCallbackProvider实例，用于注册工具回调
-	@Bean
+/*	@Bean
 	public ToolCallbackProvider weatherTools(WeatherService weatherService) {
 		// 使用MethodToolCallbackProvider来注册WeatherService实例作为工具对象
 		return MethodToolCallbackProvider.builder()
@@ -57,7 +57,7 @@ public class McpServerApplication {
 				.inputType(TextInput.class) // 设置输入类型为TextInput
 				.description("Put the text to upper case") // 添加功能描述
 				.build(); // 构建并返回ToolCallback实例
-	}
+	}*/
 
 
 	@Bean
@@ -66,6 +66,7 @@ public class McpServerApplication {
 				.toolObjects(vvtrDate)
 				.build();
 	}
+
 
 //	@Bean
 //	public List<McpServerFeatures.SyncResourceSpecification> resources() throws IOException {
